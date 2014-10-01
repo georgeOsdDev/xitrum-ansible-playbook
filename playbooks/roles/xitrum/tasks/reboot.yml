@@ -1,0 +1,4 @@
+- name: Restart xitrum
+  service: name=xitrum state=restarted
+  sudo: yes
+  sudo_user: root

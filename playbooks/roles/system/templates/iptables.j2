@@ -1,0 +1,31 @@
+# {{ ansible_managed }}
+# Manual customization of this file is not recommended.
+*filter
+:INPUT ACCEPT [0:0]
+:FORWARD ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+
+{% if hostvars[inventory_hostname].xitrum_conf.port.http is defined %}
+-A INPUT -p tcp -m tcp --dport {{ hostvars[inventory_hostname].xitrum_conf.port.http }} -j ACCEPT
+{% endif %}
+
+{% if hostvars[inventory_hostname].xitrum_conf.port.https is defined %}
+-A INPUT -p tcp -m tcp --dport {{ hostvars[inventory_hostname].xitrum_conf.port.https }} -j ACCEPT
+{% endif %}
+
+{% for host in groups['xitrum_servers'] %}
+# For akka
+-A INPUT -s {{ hostvars[host]['ansible_eth0']['ipv4']['address'] }} -p tcp --destination-port 2551 -m state --state NEW,ESTABLISHED -j ACCEPT
+-A OUTPUT -d {{ hostvars[host]['ansible_eth0']['ipv4']['address'] }} -p tcp --source-port 2551 -m state --state ESTABLISHED -j ACCEPT
+# For hazelcast
+-A INPUT -s {{ hostvars[host]['ansible_eth0']['ipv4']['address'] }} -p tcp --destination-port 5701 -m state --state NEW,ESTABLISHED -j ACCEPT
+-A OUTPUT -d {{ hostvars[host]['ansible_eth0']['ipv4']['address'] }} -p tcp --source-port 5701 -m state --state ESTABLISHED -j ACCEPT
+{% endfor %}
+
+-A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+-A INPUT -p icmp -j ACCEPT
+-A INPUT -i lo -j ACCEPT
+-A INPUT -m state --state NEW -m tcp -p tcp --dport 22 -j ACCEPT
+-A INPUT -j REJECT --reject-with icmp-host-prohibited
+-A FORWARD -j REJECT --reject-with icmp-host-prohibited
+COMMIT

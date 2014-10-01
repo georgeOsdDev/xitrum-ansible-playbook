@@ -1,0 +1,89 @@
+---
+- name: Install git
+  yum: name=git-core state=latest
+
+- name: Check current xitrum service
+  command: /usr/bin/test -h /etc/init.d/xitrum
+  register: xitrum_service
+  ignore_errors: True
+
+- name: Stop existing app if exists
+  service: name=xitrum state=stopped
+  sudo: yes
+  sudo_user: root
+  when: xitrum_service|success
+
+- name: Remove existing app directory if exist
+  command: rm -rf {{ hostvars[inventory_hostname].app_home }}
+
+- name: Create app directory
+  file: path={{ hostvars[inventory_hostname].app_home }} state=directory owner=xitrum group=xitrum mode=0775
+
+- name: Clone app from repository
+  git: repo={{ hostvars[inventory_hostname].app_git_repo }} dest={{ hostvars[inventory_hostname].app_home }}
+
+- name: Remove default config
+  command: /bin/rm -rf {{ hostvars[inventory_hostname].app_home }}/config
+
+- name: Make config directory
+  command: /bin/mkdir {{ hostvars[inventory_hostname].app_home }}/config
+
+- name: Copy application.conf
+  copy: >
+    src=application.conf
+    dest={{ hostvars[inventory_hostname].app_home }}/config/application.conf
+    owner=xitrum group=xitrum mode=0644
+
+- name: Copy flash_socket_policy.xml
+  copy: >
+    src=application.conf
+    dest={{ hostvars[inventory_hostname].app_home }}/config/flash_socket_policy.xml
+    owner=xitrum group=xitrum mode=0644
+
+- name: Copy ssl crt file
+  copy: >
+    src={{ hostvars[inventory_hostname].ssl_crt }}
+    dest={{ hostvars[inventory_hostname].app_home }}/config/{{ hostvars[inventory_hostname].ssl_crt }}
+    owner=xitrum group=xitrum mode=0644
+
+- name: Copy ssl key file
+  copy: >
+    src={{ hostvars[inventory_hostname].ssl_key }}
+    dest={{ hostvars[inventory_hostname].app_home }}/config/{{ hostvars[inventory_hostname].ssl_key }}
+    owner=xitrum group=xitrum mode=0644
+
+- name: Copy logback.xml
+  copy: >
+    src=logback.xml
+    dest={{ hostvars[inventory_hostname].app_home }}/config/logback.xml
+    owner=xitrum group=xitrum mode=0644
+
+- name: Copy xitrum.conf from template
+  template: src=xitrum.conf.j2 dest={{ hostvars[inventory_hostname].app_home }}/config/xitrum.conf
+
+- name: Copy akka.conf from template
+  template: src=akka.conf.j2 dest={{ hostvars[inventory_hostname].app_home }}/config/akka.conf
+
+- name: Change owner
+  command: /bin/chown -R xitrum:xitrum {{ hostvars[inventory_hostname].app_home }}
+
+- name: Create the xitrum startup file
+  template: src=xitrum_service.j2 dest=/etc/init.d/xitrum mode=0655
+  sudo: yes
+  sudo_user: root
+
+- name: Register xitrum as service
+  command: /sbin/chkconfig --add xitrum
+  sudo: yes
+  sudo_user: root
+
+- name: Set auto start for xitrum service
+  command: /sbin/chkconfig --levels 235 xitrum on
+  sudo: yes
+  sudo_user: root
+
+- name: Build and start xitrum app
+  command: >
+    /bin/sh sbt/sbt xitrum-package
+    chdir={{ hostvars[inventory_hostname].app_home }}
+  notify: restart xitrum

@@ -1,0 +1,42 @@
+---
+# Localtime
+localtime: /usr/share/zoneinfo/Japan
+ntp_server: ntp.nict.jp
+
+# JDK
+jdk_version: jdk1.7.0_67
+jdk_rpm_dl_url: 'http://download.oracle.com/otn-pub/java/jdk/7u67-b01/jdk-7u67-linux-x64.rpm'
+jdk_rpm_file: /tmp/jdk-7u67-linux-x64.rpm
+
+# OS password of xitrum user
+# Create own password by
+# `python -c "from passlib.hash import sha512_crypt; print sha512_crypt.encrypt('<password>')"`
+# default password is `xitrum`
+user_password: $6$rounds=100000$Hv0imMoMCWSwsqZA$NYOMGPsGQImJ17F53nKsF8lHhD5ow9/FlH7/at18oxvIVCb/dvdzovkio21lH4d2aNx.tVVLhfV5qOZpMrmcb.
+
+#If you want run massive client on server, set yes for tune Sysctl.
+#run_clients: yes
+
+# Application
+app_git_repo: 'https://github.com/xitrum-framework/xitrum-new.git'
+app_home: /opt/src/app
+app_boot_file: quickstart.Boot
+
+# Put these files in role/xitrum/file
+ssl_crt: ssl_example.crt
+ssl_key: ssl_example.key
+
+# For xitrum.conf
+xitrum_conf:
+  interface: localhost
+  port:
+    http: 8000
+    https: 4430
+  basicAuth:
+    realm: xitrum
+    username: xitrum
+    password: xitrum
+
+# For akka.conf
+akka_conf:
+  port: 2551

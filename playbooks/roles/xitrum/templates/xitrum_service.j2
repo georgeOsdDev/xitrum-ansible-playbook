@@ -1,0 +1,106 @@
+#!/bin/sh
+#
+# xitrum        Startup script for xitrum
+#
+# chkconfig: 35 90 10
+# description: xitrum service
+# processname: xitrum
+# pidfile: /var/run/xitrum.pid
+
+. /etc/rc.d/init.d/functions
+
+PROG=xitrum
+PIDFILE=/var/run/xitrum.pid
+LOCKFILE=/var/lock/subsys/xitrum
+RETVAL=0
+
+XITRUM_USER=xitrum
+XITRUM_GROUP=xitrum
+APP_HOME={{ hostvars[inventory_hostname].app_home }}
+XITRUM_START_SH=$APP_HOME/target/xitrum/script/runner
+BOOT_FILE={{ hostvars[inventory_hostname].app_boot_file }}
+
+STDOUT_AND_STDERR=$APP_HOME/target/xitrum/log/stdout_and_stderr.log
+if [ ! -f $STDOUT_AND_STDERR ]; then
+  mkdir -p $APP_HOME/target/xitrum/log
+  touch $STDOUT_AND_STDERR
+  chmod 777 -R $APP_HOME/target/xitrum/log
+  chown $XITRUM_USER:$XITRUM_GROUP -R $APP_HOME/target/xitrum/log
+fi
+
+start()
+{
+  echo -n $"Starting Xitrum: "
+  echo ""
+  cd $APP_HOME
+  sudo -u ${XITRUM_USER} nohup ${XITRUM_START_SH} ${BOOT_FILE} >> ${STDOUT_AND_STDERR} 2>&1 &
+  SUDO_PARENT_PID=`echo $!`
+  # Wait 1sec to get child pid
+  # http://stackoverflow.com/questions/9315829/how-to-get-the-pid-of-command-running-with-sudo
+  sleep 1
+  echo `ps --ppid ${SUDO_PARENT_PID} -o pid=` > $PIDFILE
+  RETVAL=$?
+  [ $RETVAL = 0 ] && touch ${LOCKFILE}
+  chown  $XITRUM_USER:$XITRUM_GROUP $PIDFILE
+  chown  $XITRUM_USER:$XITRUM_GROUP $LOCKFILE
+  return $RETVAL
+}
+
+stop()
+{
+  echo -n $"Stopping Xitrum: "
+  if [ -f $PIDFILE ]; then
+    PID=`cat $PIDFILE`
+    if [ -z "`ps axf | grep ${PID} | grep -v grep`" ]; then
+      echo "Process is already dead but pidfile exists"
+      RETVAL=0
+    else
+      sudo -u ${XITRUM_USER} kill -9 $PID
+      RETVAL=$?
+    fi
+    echo
+    [ $RETVAL = 0 ] && rm -f ${LOCKFILE} ${PIDFILE}
+  fi
+  echo "Xitrum is stopped"
+}
+
+restart() {
+    echo -n $"Reloading $prog: "
+  	stop
+    sleep 1
+  	start
+    echo
+}
+
+status() {
+  if [ -f $PIDFILE ]; then
+    PID=`cat $PIDFILE`
+    if [ -z "`ps axf | grep ${PID} | grep -v grep`" ]; then
+      echo "Process dead but pidfile exists"
+    else
+      echo "Xitrum is running"
+    fi
+  else
+    echo "Xitrum is not running"
+  fi
+}
+
+
+case "$1" in
+  start)
+    start
+    ;;
+  stop)
+    stop
+    ;;
+  restart)
+    restart
+    ;;
+  status)
+    status
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|restart|status}"
+esac
+
+exit $RETVAL

@@ -1,0 +1,79 @@
+---
+- name: Create xitrum group
+  group: name=xitrum state=present
+
+- name: Create xitrum user
+  user: >
+    name=xitrum
+    uid=1001
+    comment="xitrum user"
+    group=xitrum
+    password={{ hostvars[inventory_hostname].user_password }}
+    generate_ssh_key=yes
+    ssh_key_bits=2048
+    state=present
+
+- name: Add xitrum to sudor
+  lineinfile: dest=/etc/sudoers state=present line='xitrum ALL=(ALL)       NOPASSWD:ALL' validate='visudo -cf %s'
+
+- name: Change Defaults requiretty for root user
+  lineinfile: dest=/etc/sudoers insertafter='^Defaults    requiretty'   line="Defaults:root    !requiretty"
+
+
+- name: Install libselinux-python
+  yum: name=libselinux-python state=latest
+
+- name: Update /etc/security/limits.conf
+  copy: >
+    src=os_conf_etc_security_limits.conf.txt
+    dest=/etc/security/limits.conf
+    owner=root group=root mode=0644
+
+### ignoreerrors=yes becuase error: “net.bridge.bridge-nf-call-iptables” is an unknown key
+- name: Sysctl net.core.rmem_max set 16777216
+  sysctl: name=net.core.rmem_max value=16777216 sysctl_set=yes state=present reload=yes ignoreerrors=yes
+
+- name: Sysctl net.core.wmem_max set 16777216
+  sysctl: name=net.core.wmem_max value=16777216 sysctl_set=yes state=present reload=yes ignoreerrors=yes
+
+- name: Sysctl net.ipv4.tcp_rmem set 4096 87380 16777216
+  sysctl: name=net.ipv4.tcp_rmem value='4096 87380 16777216' sysctl_set=yes state=present reload=yes ignoreerrors=yes
+
+- name: Sysctl net.ipv4.tcp_wmem set 4096 65536 16777216
+  sysctl: name=net.ipv4.tcp_wmem value='4096 65536 16777216' sysctl_set=yes state=present reload=yes ignoreerrors=yes
+
+- name: Sysctl net.ipv4.tcp_mem set 50576 64768 98152
+  sysctl: name=net.ipv4.tcp_mem value='50576 64768 98152' sysctl_set=yes state=present reload=yes ignoreerrors=yes
+
+- name: Sysctl net.core.netdev_max_backlog set 2048
+  sysctl: name=net.core.netdev_max_backlog  value=2048 sysctl_set=yes state=present reload=yes ignoreerrors=yes
+
+- name: Sysctl net.core.somaxconn set 1024
+  sysctl: name=net.core.somaxconn           value=1024 sysctl_set=yes state=present reload=yes ignoreerrors=yes
+
+- name: Sysctl net.ipv4.tcp_max_syn_backlog set 2048
+  sysctl: name=net.ipv4.tcp_max_syn_backlog value=2048 sysctl_set=yes state=present reload=yes ignoreerrors=yes
+
+- name: Sysctl net.ipv4.tcp_syncookies set 1
+  sysctl: name=net.ipv4.tcp_syncookies      value=1    sysctl_set=yes state=present reload=yes ignoreerrors=yes
+
+# If you run massive clients at target server
+- name: Sysctl net.ipv4.ip_local_port_range set 1024 65535
+  sysctl: name=net.ipv4.ip_local_port_range value='1024 65535' sysctl_set=yes state=present reload=yes ignoreerrors=yes
+  when: hostvars[inventory_hostname].run_clients is defined
+
+- name: Sysctl net.ipv4.tcp_tw_recycle set 1
+  sysctl: name=net.ipv4.tcp_tw_recycle value=1 sysctl_set=yes state=present reload=yes ignoreerrors=yes
+  when: hostvars[inventory_hostname].run_clients is defined
+
+- name: Sysctl net.ipv4.tcp_tw_reuse set 1
+  sysctl: name=net.ipv4.tcp_tw_reuse value=1 sysctl_set=yes state=present reload=yes ignoreerrors=yes
+  when: hostvars[inventory_hostname].run_clients is defined
+
+- name: Sysctl net.ipv4.tcp_fin_timeout set 10
+  sysctl: name=net.ipv4.tcp_fin_timeout value=10 sysctl_set=yes state=present reload=yes ignoreerrors=yes
+  when: hostvars[inventory_hostname].run_clients is defined
+
+- name: Update iptables
+  template: src=iptables.j2 dest=/etc/sysconfig/iptables
+  notify: restart iptables

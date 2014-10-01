@@ -1,0 +1,16 @@
+---
+- name: Apply os tuning and install jdk
+  hosts: [xitrum_servers]
+  sudo: yes
+  roles:
+    - system
+    - java
+  tasks:
+    - include: roles/system/tasks/datetime.yml
+
+- name: Clone,Build,Run Xitrum
+  hosts: [xitrum_servers]
+  sudo_user: xitrum
+  sudo: yes
+  roles:
+    - xitrum

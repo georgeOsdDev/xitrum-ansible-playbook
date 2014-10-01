@@ -1,0 +1,42 @@
+---
+- name: Backup original localtime
+  command: /bin/mv /etc/localtime /etc/localtime.org
+  when: hostvars[inventory_hostname].localtime is defined
+
+- name: Set localtime
+  command: ln -s {{ hostvars[inventory_hostname].localtime }} /etc/localtime
+  when: hostvars[inventory_hostname].localtime is defined
+
+- name:  Install ntpd, ntpdate
+  action: yum pkg={{ item }} state=installed
+  with_items:
+     - ntp
+     - ntpdate
+
+- name: Stop ntpdate
+  service: name=ntpdate state=stopped
+
+- name: Stop ntpd
+  service: name=ntpd state=stopped
+
+- name: Set NTP Server
+  command: ntpdate {{ hostvars[inventory_hostname].ntp_server }}
+  when: hostvars[inventory_hostname].ntp_server is defined
+
+- name: Start ntpdate
+  service: name=ntpdate state=started
+
+- name: Start ntpd
+  service: name=ntpd state=started
+
+- name: Set auot start nptdate
+  command: /sbin/chkconfig ntpdate on
+
+- name: Set auot start nptd
+  command: /sbin/chkconfig ntpd on
+
+- name: ntpd should be running
+  action: service name=ntpd state=running
+
+- name: ntpd should be running
+  action: service name=ntpdate state=running

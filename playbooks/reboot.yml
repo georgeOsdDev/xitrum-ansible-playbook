@@ -1,0 +1,7 @@
+---
+- name: Reboot Xitrum
+  hosts: [xitrum_servers]
+  sudo_user: xitrum
+  sudo: yes
+  tasks:
+    - include: roles/xitrum/tasks/reboot.yml

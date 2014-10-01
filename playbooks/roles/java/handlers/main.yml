@@ -1,0 +1,3 @@
+---
+- name: remove rpm file
+  command: rm -rf {{ hostvars[inventory_hostname].jdk_rpm_file }}

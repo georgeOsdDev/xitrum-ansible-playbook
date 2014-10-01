@@ -1,0 +1,19 @@
+---
+- name: Install wget
+  yum: name=wget state=latest
+
+- name: Download oracle jdk
+  command: >
+    wget --no-check-certificate --no-cookies --header "Cookie: oraclelicense=accept-securebackup-cookie" {{ hostvars[inventory_hostname].jdk_rpm_dl_url }} -q -O {{ hostvars[inventory_hostname].jdk_rpm_file }}
+    creates={{ hostvars[inventory_hostname].jdk_rpm_file }}
+  poll: 10
+
+- name: Install oracle jdk
+  yum: name={{ hostvars[inventory_hostname].jdk_rpm_file }}
+
+- name: Make Default java unavailable for system
+  command: 'update-alternatives --install /usr/bin/java java /usr/java/default/bin/java 200000'
+
+- name: Make Oracle Java available for system
+  command: 'update-alternatives --install "/usr/bin/java" "java" "/usr/java/{{ hostvars[inventory_hostname].jdk_version }}/bin/java" 1'
+  notify: remove rpm file
